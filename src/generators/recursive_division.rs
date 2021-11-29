@@ -30,8 +30,8 @@ impl Generator for RecursiveDivision {
                 
                 let next_neighbor = {
                     let adjacent_cells: Vec<Offset> = 
-                    maze.adjacent_cells(self.nodes[node_idx].current)
-                        .map(|(_, cell)| cell.offset)
+                    maze.adjacencies(self.nodes[node_idx].current)
+                        .map(|adj| adj.offset)
                         .filter(|offset| {
                             for other in &self.nodes {
                                 if other.id == self.nodes[node_idx].id && other.cells.contains(offset) {
@@ -130,7 +130,7 @@ impl Generator for RecursiveDivision {
         vec![
             GeneratorOption {
                 min: 1,
-                default: 10,
+                default: 1,
                 max: maze.cells.len() / 4,
                 name: "Threads",
             },

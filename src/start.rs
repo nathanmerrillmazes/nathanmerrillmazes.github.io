@@ -14,7 +14,6 @@ pub struct CanvasData {
     canvas: CanvasRenderingContext2d,
     bounding_box: Rectangle,
     center: Coordinates,
-    scale: f64,
     maze: Maze,
     finished: bool,
     generator: Box<dyn Generator>,
@@ -28,21 +27,18 @@ static FILLED: &str = "#333652";
 static OPEN: &str = "#E9EAEc";
 
 impl CanvasData {
-    pub fn new(canvas: HtmlCanvasElement) -> Self {
+    pub fn new(canvas: HtmlCanvasElement, scale: f64, rotation: f64) -> Self {
         let width = canvas.get_attribute("width").and_then(|a| a.as_str().parse().ok()).unwrap_or(500.0);
         let height = canvas.get_attribute("height").and_then(|a| a.as_str().parse().ok()).unwrap_or(500.0);
         
         let context_element = canvas.get_context("2d").ok().unwrap().unwrap();
         let canvas_rendering = context_element.dyn_into::<web_sys::CanvasRenderingContext2d>().ok().unwrap();
-
-        
-        let scale = width / 50.0;
     
         let bounding_box = Rectangle {
             x: 0.0,
             y: 0.0,
-            width: width / scale,
-            height: height / scale,
+            width,
+            height,
         };
         let tiling = tilings().into_iter().find_map(|(name, tiling)|if name == "Square" {Some(tiling)} else {None}).unwrap();
         let center = Coordinates {
@@ -50,7 +46,7 @@ impl CanvasData {
             y: bounding_box.height / 2.0,
         };
     
-        let maze = Maze::new(tiling, bounding_box, center);
+        let maze = Maze::new(tiling, bounding_box, center, scale, rotation);
         
         let options = RecursiveDivision::options(&maze);
         let option_values = options.iter().map(|option| (option.name, option.default)).collect();
@@ -60,7 +56,6 @@ impl CanvasData {
             bounding_box,
             generator: Box::new(RecursiveDivision::init(&maze, thread_rng(), option_values)),
             maze,
-            scale,
             center,
             finished: false,
             primary: HashSet::new(),
@@ -69,13 +64,12 @@ impl CanvasData {
     }
 
     pub fn render(&self) {
-        self.canvas.clear_rect(0.0, 0.0, self.bounding_box.width * self.scale, self.bounding_box.height * self.scale);
+        log::info!("{:?}", self.bounding_box);
+        self.canvas.clear_rect(0.0, 0.0, self.bounding_box.width, self.bounding_box.height);
         
         for cell in self.maze.cells.values() {
             self.render_cell(cell);
         }
-
-        self.canvas.rect(self.bounding_box.x * self.scale, self.bounding_box.y * self.scale, self.bounding_box.width * self.scale, self.bounding_box.height * self.scale);
     }
 
     pub fn process_updates(&mut self, updates: Vec<GeneratorUpdate>) -> HashSet<Offset> {
@@ -131,8 +125,8 @@ impl CanvasData {
         // Fill:
         self.canvas.begin_path();
         for corner in polygon.corners {
-            let next_position = (*corner + cell.offset.coordinates) * self.scale;
-            self.canvas.line_to(next_position.x, next_position.y); 
+            let corner_coordinates = cell.offset.coordinates + scale(rotate(*corner, Coordinates::origin(), self.maze.rotation), Coordinates::origin(), self.maze.scaling);
+            self.canvas.line_to(corner_coordinates.x, corner_coordinates.y); 
         }
         self.canvas.close_path();
         self.canvas.set_fill_style(&JsValue::from_str(fill));
@@ -143,8 +137,8 @@ impl CanvasData {
             if cell.walls[i] {
                 let next_corner = polygon.corners[(i+1) % polygon.corners.len()];
                 self.canvas.begin_path();
-                let start_position = (*corner + cell.offset.coordinates) * self.scale;
-                let stop_position = (next_corner + cell.offset.coordinates) * self.scale;
+                let start_position = cell.offset.coordinates + scale(rotate(*corner, Coordinates::origin(), self.maze.rotation), Coordinates::origin(), self.maze.scaling);
+                let stop_position = cell.offset.coordinates + scale(rotate(next_corner, Coordinates::origin(), self.maze.rotation), Coordinates::origin(), self.maze.scaling);
                 self.canvas.move_to(start_position.x, start_position.y);
                 self.canvas.line_to(stop_position.x, stop_position.y);
                 self.canvas.stroke();
@@ -152,18 +146,14 @@ impl CanvasData {
         }
         
     }
-    
-    pub fn set_tiling(&mut self, tiling: Tiling){
-        self.maze = Maze::new(tiling, self.bounding_box, self.center);
+
+    pub fn reset(&mut self, maze: Maze) {
+        self.maze = maze;
         let options = RecursiveDivision::options(&self.maze);
         let option_values = options.iter().map(|option| (option.name, option.default)).collect();
         self.generator = Box::new(RecursiveDivision::init(&self.maze, thread_rng(), option_values));
         self.finished = false;
         self.render();
-    }
-
-    pub fn reset(&mut self) {
-        self.set_tiling(self.maze.tiling.clone());
     }
 
     pub fn step(&mut self, iterations: u32) -> bool {
@@ -216,13 +206,13 @@ pub fn start() {
 #[wasm_bindgen]
 #[allow(dead_code)]
 pub fn reset(canvas_data: &mut CanvasData) {
-    canvas_data.reset();
+    canvas_data.reset(Maze::new(canvas_data.maze.tiling, canvas_data.bounding_box, canvas_data.center, canvas_data.maze.scaling, canvas_data.maze.rotation));
 }
 
 #[wasm_bindgen]
 #[allow(dead_code)]
-pub fn wasm_init(canvas: web_sys::HtmlCanvasElement) -> CanvasData {
-    let data = CanvasData::new(canvas);
+pub fn wasm_init(canvas: web_sys::HtmlCanvasElement, scale: f64, rotation: f64) -> CanvasData {
+    let data = CanvasData::new(canvas, scale, rotation);
     data.render();
     data
 }
@@ -241,5 +231,18 @@ pub fn get_tilings() -> js_sys::Array {
 #[allow(dead_code)]
 pub fn set_tiling(tiling_name: String, canvas_data: &mut CanvasData) {
     let tiling = tilings().into_iter().find_map(|(tile_name, tiling)|if tiling_name == tile_name {Some(tiling)} else {None}).unwrap();
-    canvas_data.set_tiling(tiling);
+    canvas_data.reset(Maze::new(tiling, canvas_data.bounding_box, canvas_data.center, canvas_data.maze.scaling, canvas_data.maze.rotation));
+}
+
+#[wasm_bindgen]
+#[allow(dead_code)]
+pub fn set_rotation(rotation: f64, canvas_data: &mut CanvasData) {
+    canvas_data.reset(Maze::new(canvas_data.maze.tiling, canvas_data.bounding_box, canvas_data.center, canvas_data.maze.scaling, rotation));
+}
+
+#[wasm_bindgen]
+#[allow(dead_code)]
+pub fn set_scale(scale: f64, canvas_data: &mut CanvasData) {
+    log::info!("Set Scale");
+    canvas_data.reset(Maze::new(canvas_data.maze.tiling, canvas_data.bounding_box, canvas_data.center, scale, canvas_data.maze.rotation));
 }

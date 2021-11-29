@@ -79,10 +79,12 @@ export function reset(canvas_data) {
 
 /**
 * @param {HTMLCanvasElement} canvas
+* @param {number} scale
+* @param {number} rotation
 * @returns {CanvasData}
 */
-export function wasm_init(canvas) {
-    var ret = wasm.wasm_init(addHeapObject(canvas));
+export function wasm_init(canvas, scale, rotation) {
+    var ret = wasm.wasm_init(addHeapObject(canvas), scale, rotation);
     return CanvasData.__wrap(ret);
 }
 
@@ -157,6 +159,24 @@ export function set_tiling(tiling_name, canvas_data) {
     var len0 = WASM_VECTOR_LEN;
     _assertClass(canvas_data, CanvasData);
     wasm.set_tiling(ptr0, len0, canvas_data.ptr);
+}
+
+/**
+* @param {number} rotation
+* @param {CanvasData} canvas_data
+*/
+export function set_rotation(rotation, canvas_data) {
+    _assertClass(canvas_data, CanvasData);
+    wasm.set_rotation(rotation, canvas_data.ptr);
+}
+
+/**
+* @param {number} scale
+* @param {CanvasData} canvas_data
+*/
+export function set_scale(scale, canvas_data) {
+    _assertClass(canvas_data, CanvasData);
+    wasm.set_scale(scale, canvas_data.ptr);
 }
 
 function isLikeNone(x) {
@@ -299,9 +319,6 @@ async function init(input) {
     };
     imports.wbg.__wbg_moveTo_18ace182fe51d75d = function(arg0, arg1, arg2) {
         getObject(arg0).moveTo(arg1, arg2);
-    };
-    imports.wbg.__wbg_rect_ddb72ce11643f852 = function(arg0, arg1, arg2, arg3, arg4) {
-        getObject(arg0).rect(arg1, arg2, arg3, arg4);
     };
     imports.wbg.__wbg_clearRect_07caefec3496ced1 = function(arg0, arg1, arg2, arg3, arg4) {
         getObject(arg0).clearRect(arg1, arg2, arg3, arg4);

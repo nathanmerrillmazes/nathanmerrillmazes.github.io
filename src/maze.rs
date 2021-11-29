@@ -1,10 +1,10 @@
 use std::{collections::{HashMap, HashSet}, ops::{Add, Div, Mul, Sub}};
 
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Tiling {
     // Uniform tiling that consists of a set of polygons that can be stamped at the offsets given
-    pub polygons: &'static [TilePolygon],
+    pub polygons: &'static[TilePolygon],
     pub neighbors: &'static[Offset],
 }
 
@@ -209,7 +209,7 @@ impl Sub for Coordinates {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TilePolygon {
     pub offset: Offset,
     pub corners: &'static [Coordinates],
@@ -255,6 +255,8 @@ impl Cell {
 pub struct Maze {
     pub cells: HashMap<Offset, Cell>, // Offset -> index in Tiling.polygons
     pub tiling: Tiling,
+    pub scaling: f64,
+    pub rotation: f64
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -266,14 +268,34 @@ pub struct Rectangle {
 }
 
 impl Rectangle {
-    pub fn contains(self: Rectangle, coordinates: Coordinates) -> bool {
+    pub fn contains(self, coordinates: Coordinates) -> bool {
         coordinates.x >= self.x && coordinates.x <= self.x + self.width &&
             coordinates.y >= self.y && coordinates.y <= self.y + self.height
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Adjacency {
+    pub index: usize,
+    pub offset: Offset
+}
+
+pub fn rotate(point: Coordinates, origin: Coordinates, angle: f64) -> Coordinates {
+    let distance = point - origin;
+    let sin = angle.sin();
+    let cos = angle.cos();
+    Coordinates {
+        x: origin.x + cos * distance.x - sin * distance.y,
+        y: origin.y + sin * distance.x + cos * distance.y,
+    }
+}
+
+pub fn scale(point: Coordinates, origin: Coordinates, scale: f64) -> Coordinates {
+    (point - origin) * scale + origin
+}
+
 impl Maze {
-    pub fn new(tiling: Tiling, bounding_box: Rectangle, center: Coordinates) -> Maze {
+    pub fn new(tiling: Tiling, bounding_box: Rectangle, center: Coordinates, scaling: f64, rotation: f64) -> Maze {
         let start = Offset {
             x: 0,
             y: 0,
@@ -291,8 +313,13 @@ impl Maze {
         while let Some(tile) = queue.pop() { 
             let mut added = false;
             for (index, polygon) in tiling.polygons.iter().enumerate() {
-                let cell_offset = tile + polygon.offset;
-                if !polygon.corners.iter().all(|corner| bounding_box.contains(cell_offset.coordinates + *corner)){
+                let mut cell_offset = tile + polygon.offset;
+                cell_offset.coordinates = scale(rotate(cell_offset.coordinates, center, rotation), center, scaling);
+
+                if !polygon.corners.iter().all(|corner| {
+                    let corner_coordinates = scale(rotate(*corner, Coordinates::origin(), rotation), Coordinates::origin(), scaling);
+                    bounding_box.contains(corner_coordinates + cell_offset.coordinates)
+                }){
                     continue;
                 }
                 
@@ -318,7 +345,7 @@ impl Maze {
 
         debug_assert!(!cells.is_empty(), "Bounding box does not contain center!");
 
-        Maze { cells, tiling }
+        Maze { cells, tiling, scaling, rotation }
     }
 
     
@@ -333,54 +360,38 @@ impl Maze {
         None
     }
 
-    fn adjacent_offsets<'a>(&'a self, offset: Offset) -> impl Iterator<Item = (usize, Offset)> + '_ {
+    pub fn adjacencies<'a>(&'a self, offset: Offset) -> impl Iterator<Item = Adjacency> + '_ {
         let cell = &self.cells[&offset]; 
         self.tiling.polygons[cell.polygon].sides.iter()
-            .map(move |side| self.calculate_offset(cell, *side))
             .enumerate()
-            .filter(move |(_, offset)| self.cells.contains_key(&offset))
-    }
-
-    pub fn adjacent_cells<'a>(&'a self, cell: Offset) -> impl Iterator<Item = (usize, &'a Cell)> + '_ {
-        self.adjacent_offsets(cell).map(move |(side, offset)| (side, &self.cells[&offset]))
+            .filter_map(move |(index, side)|  {
+                let offset = self.calculate_offset(cell, *side);
+                if self.cells.contains_key(&offset) {
+                    Some(Adjacency{index, offset})
+                } else {
+                    None
+                }
+            })
     }
  
     pub fn connect(&mut self, cell: Offset, other: Offset) {
-        let (cell_wall, other_wall) = {
-            if let Some((cell_wall, _)) = self.adjacent_offsets(cell).find(|(_, c)| *c == other) {
-                if let Some((other_wall, _)) = self.adjacent_offsets(other).find(|(_, c)| *c == cell) {
-                    (cell_wall, other_wall)
-                } else {
-                    debug_assert!(false, "Cell {:?} is not adjacent to {:?}", cell, other);
-                    std::process::abort();
-                }
-            } else {
-                debug_assert!(false, "Cell {:?} is not adjacent to {:?}", other, cell);
-                std::process::abort();
-            }
-        };
-        
-        self.cells.get_mut(&cell).unwrap().walls[cell_wall] = false;
-        self.cells.get_mut(&other).unwrap().walls[other_wall] = false;
+        self.set_wall(cell, other, false);
+        self.set_wall(other, cell, false);
     }
 
     pub fn disconnect(&mut self, cell: Offset, other: Offset) {
-        let (cell_wall, other_wall) = {
-            if let Some((cell_wall, _)) = self.adjacent_offsets(cell).find(|(_, c)| *c == other) {
-                if let Some((other_wall, _)) = self.adjacent_offsets(other).find(|(_, c)| *c == cell) {
-                    (cell_wall, other_wall)
-                } else {
-                    debug_assert!(false, "Cell {:?} is not adjacent to {:?}", cell, other);
-                    std::process::abort();
-                }
-            } else {
-                debug_assert!(false, "Cell {:?} is not adjacent to {:?}", other, cell);
-                std::process::abort();
-            }
-        };
-        
-        self.cells.get_mut(&cell).unwrap().walls[cell_wall] = true;
-        self.cells.get_mut(&other).unwrap().walls[other_wall] = true;
+        self.set_wall(cell, other, true);
+        self.set_wall(other, cell, true);        
+    }
+
+    fn set_wall(&mut self, cell: Offset, to: Offset, wall: bool) {
+        let adjacency = self.adjacencies(cell).find(|adj| adj.offset == to);
+
+        if let Some(cell_adjacency) = adjacency {
+            self.cells.get_mut(&cell).unwrap().walls[cell_adjacency.index] = wall;
+        } else {
+            debug_assert!(false, "Cell {:?} is not adjacent to {:?}", to, cell);
+        }
     }
     
     fn connected_offsets<'a>(&'a self, cell: &'a Cell) -> impl Iterator<Item = Offset> + '_ {
@@ -396,8 +407,8 @@ impl Maze {
         self.connected_offsets(cell).map(move |offset| &self.cells[&offset])
     }
 
-    pub fn get_polygon(&self, cell: &Cell) -> &TilePolygon {
-        &self.tiling.polygons[cell.polygon]
+    pub fn get_polygon(&self, cell: &Cell) -> TilePolygon {
+        self.tiling.polygons[cell.polygon]
     }
 
     fn calculate_offset(&self, cell: &Cell, side: PolygonSide) -> Offset {

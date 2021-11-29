@@ -3,17 +3,19 @@ import init, * as wasm from "./wasm/mazes.js";
 await init();
 
 var canvas = document.getElementById("canvas")
-let data = wasm.wasm_init(canvas);
+let data = wasm.wasm_init(canvas, 15, 0);
 
 var tilingElement = document.getElementById("select-tiling");
 var runElement = document.getElementById("run");
 var stopElement = document.getElementById("stop");
 var stepElement = document.getElementById("step");
 var speedElement = document.getElementById("speed");
-
+var rotationElement = document.getElementById("rotation");
+var scaleElement = document.getElementById("scale");
 var interval = null;
-var speed = 50;
-speedElement.value = speed;
+speedElement.value = 50;
+scaleElement.value = 15;
+rotationElement.value = 0;
 var running = false;
 var finished = false;
 
@@ -35,17 +37,21 @@ run.onclick = function() {
 
 function set_running(bool) {
     if (bool && finished) {
+        finished = false;
         wasm.reset(data);
     }
 
     tilingElement.disabled = bool;
     stepElement.disabled = bool;
     runElement.disabled = bool;
-    stopElement.disabled = !bool;
+    scaleElement.disabled = bool;
+    rotationElement.disabled = bool;
+    stopElement.disabled = !bool;    
     running = bool;
     if (bool) {
         let timeout = 0;
         let iterations = 1;
+        let speed = parseInt(speedElement.value);
         if (speed > 50) {
             iterations = speed - 49;
         }
@@ -77,8 +83,17 @@ stepElement.onclick = function() {
 }
 
 speedElement.oninput = function() {
-    speed = parseInt(this.value);
     if (running) {
         set_running(true);
     }
+}
+
+scaleElement.oninput = function() {
+    var scale = parseInt(this.value);
+    wasm.set_scale(scale, data);
+}
+
+rotationElement.oninput = function() {
+    var rotation = parseInt(this.value);
+    wasm.set_rotation(rotation, data);
 }

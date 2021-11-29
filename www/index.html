@@ -2,20 +2,40 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=750,height:800">
     <title>Mazes!</title>
+    <link rel="stylesheet" href="https://cdn.rawgit.com/Chalarangelo/mini.css/v3.0.1/dist/mini-default.min.css" />
+    <meta name="viewport" content="width=750,height=800">
   </head>
   <body>
     <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
-    <script type="module" src="./index.js"></script>
-    <canvas id="canvas" width="750" height="750"></canvas>
-    <div id="controls">
-      <select id="select-tiling">
-      </select>
-      <button id="run">Run</button>
-      <button id="stop">Stop</button>
-      <button id="step">Step</button>
-      <input type="range" min="0" max="100" value="0" id="speed">
+    <div style="text-align: center;">
+      <h1>Maze Generator</h1>
+      <canvas id="canvas" width="750" height="750" style="border: solid;"></canvas>
+      <div class="row" style="justify-content: center;">
+        <div class="card">
+          <h3>Playback</h3>
+          <div id="controls">
+            <button id="step">▶</button>
+            <button id="run">▶▶</button>
+            <button id="stop">■</button>
+            <input type="range" min="0" max="100" value="0" id="speed">
+          </div>
+        </div>
+      </div>
+      <div class="row" style="justify-content: center;">
+        <div class="card">
+          <h3>Tiling</h3>
+          <select id="select-tiling">
+          </select>
+        </div>
+        <div class="card" style="justify-content: center;">
+          <h3>Rotation</h3>
+          <input type="range" min="0" max="90" step="5" id="rotation">
+          <h3>Scale</h3>
+          <input type="range" min="6" max="100" step="" id="scale">
+        </div>
+      </div>
     </div>
+    <script type="module" src="./index.js"></script>
   </body>
 </html>

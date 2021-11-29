@@ -4,8 +4,8 @@ use std::{collections::{HashMap, HashSet}, ops::{Add, Div, Mul, Sub}};
 #[derive(Clone, Debug, PartialEq)]
 pub struct Tiling {
     // Uniform tiling that consists of a set of polygons that can be stamped at the offsets given
-    pub polygons: Vec<TilePolygon>,
-    pub neighbors: Vec<Offset>,
+    pub polygons: &'static [TilePolygon],
+    pub neighbors: &'static[Offset],
 }
 
 pub struct TilingError {
@@ -212,8 +212,8 @@ impl Sub for Coordinates {
 #[derive(Clone, Debug, PartialEq)]
 pub struct TilePolygon {
     pub offset: Offset,
-    pub corners: Vec<Coordinates>,
-    pub sides: Vec<PolygonSide>,  // In the order of the corners
+    pub corners: &'static [Coordinates],
+    pub sides: &'static [PolygonSide],  // In the order of the corners
 }
 
 impl TilePolygon {
@@ -254,7 +254,7 @@ impl Cell {
 
 pub struct Maze {
     pub cells: HashMap<Offset, Cell>, // Offset -> index in Tiling.polygons
-    tiling: Tiling,
+    pub tiling: Tiling,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -280,14 +280,8 @@ impl Maze {
             coordinates: center,
         };
 
-        if !bounding_box.contains(start.coordinates) {
-            
-            panic!("Bounding box does not contain center!");
-        }
-
-        if let Some(error) = tiling.validate().err() {
-            panic!("Invalid tiling: {}", error.message);
-        }
+        debug_assert!(bounding_box.contains(start.coordinates), "Bounding box does not contain center!");
+        debug_assert!(tiling.validate().is_ok(), "{}", tiling.validate().err().unwrap().message);
 
         let mut seen = HashSet::new();
         seen.insert(start);
@@ -304,17 +298,16 @@ impl Maze {
                 
                 added = true;
 
-                if cells.insert(cell_offset, Cell {
+                let inserted = cells.insert(cell_offset, Cell {
                     offset: cell_offset,
                     polygon: index,
                     walls: vec![true; polygon.sides.len()],
-                }).is_some() {
-                    panic!("Duplicate cell offset: {:?}", cell_offset);
-                }
+                });
+                debug_assert!(inserted.is_none(), "Duplicate cell offset: {:?}", cell_offset)
             }
 
             if added {
-                for &neighbor in &tiling.neighbors {
+                for &neighbor in tiling.neighbors {
                     let next_tile = tile + neighbor;
                     if seen.insert(next_tile) {
                         queue.push(next_tile);
@@ -322,10 +315,8 @@ impl Maze {
                 }
             }
         }
-        
-        if cells.is_empty() {
-            panic!("Bounding box does not contain center!");
-        }
+
+        debug_assert!(!cells.is_empty(), "Bounding box does not contain center!");
 
         Maze { cells, tiling }
     }
@@ -360,10 +351,12 @@ impl Maze {
                 if let Some((other_wall, _)) = self.adjacent_offsets(other).find(|(_, c)| *c == cell) {
                     (cell_wall, other_wall)
                 } else {
-                    panic!("Cell {:?} is not adjacent to {:?}", cell, other);
+                    debug_assert!(false, "Cell {:?} is not adjacent to {:?}", cell, other);
+                    std::process::abort();
                 }
             } else {
-                panic!("Cell {:?} is not adjacent to {:?}", other, cell);
+                debug_assert!(false, "Cell {:?} is not adjacent to {:?}", other, cell);
+                std::process::abort();
             }
         };
         
@@ -377,10 +370,12 @@ impl Maze {
                 if let Some((other_wall, _)) = self.adjacent_offsets(other).find(|(_, c)| *c == cell) {
                     (cell_wall, other_wall)
                 } else {
-                    panic!("Cell {:?} is not adjacent to {:?}", cell, other);
+                    debug_assert!(false, "Cell {:?} is not adjacent to {:?}", cell, other);
+                    std::process::abort();
                 }
             } else {
-                panic!("Cell {:?} is not adjacent to {:?}", other, cell);
+                debug_assert!(false, "Cell {:?} is not adjacent to {:?}", other, cell);
+                std::process::abort();
             }
         };
         
@@ -414,9 +409,7 @@ impl Maze {
         };
         let offset = cell.offset - cell_polygon.offset + other_polygon.offset + tile_offset;
 
-        if offset == cell.offset {
-            panic!("Offset is the same as cell offset! Cell: {:?} Cell Polygon: {:?} Other Polygon: {:?} Other Tile: {:?}", cell.offset, cell_polygon, other_polygon, tile_offset);
-        }
+        debug_assert!(offset != cell.offset, "Offset is the same as cell offset! Cell: {:?} Cell Polygon: {:?} Other Polygon: {:?} Other Tile: {:?}", cell.offset, cell_polygon, other_polygon, tile_offset);
 
         offset
     }

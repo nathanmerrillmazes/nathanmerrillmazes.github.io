@@ -7,7 +7,7 @@ use rand::thread_rng;
 use wasm_bindgen::{JsCast, prelude::*};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
-use crate::{generators::{Generator, GeneratorUpdate, recursive_division::RecursiveDivision}, maze::*};
+use crate::{generators::{Generator, GeneratorUpdate, recursive_division::RecursiveDivision}, maze::*, tilings};
 
 #[wasm_bindgen]
 pub struct CanvasData {
@@ -130,7 +130,7 @@ impl CanvasData {
 
         // Fill:
         self.canvas.begin_path();
-        for corner in &polygon.corners {
+        for corner in polygon.corners {
             let next_position = (*corner + cell.offset.coordinates) * self.scale;
             self.canvas.line_to(next_position.x, next_position.y); 
         }
@@ -153,14 +153,17 @@ impl CanvasData {
         
     }
     
-    pub fn set_tiling(&mut self, name: String){
-        let tiling = tilings().into_iter().find_map(|(tile_name, tiling)|if name == tile_name {Some(tiling)} else {None}).unwrap();
+    pub fn set_tiling(&mut self, tiling: Tiling){
         self.maze = Maze::new(tiling, self.bounding_box, self.center);
         let options = RecursiveDivision::options(&self.maze);
         let option_values = options.iter().map(|option| (option.name, option.default)).collect();
         self.generator = Box::new(RecursiveDivision::init(&self.maze, thread_rng(), option_values));
         self.finished = false;
         self.render();
+    }
+
+    pub fn reset(&mut self) {
+        self.set_tiling(self.maze.tiling.clone());
     }
 
     pub fn step(&mut self, iterations: u32) -> bool {
@@ -188,17 +191,17 @@ pub fn step(canvas_data: &mut CanvasData, iterations: u32) -> bool {
 
 fn tilings() -> Vec<(&'static str, Tiling)> {
     vec![
-        ("Square", Tiling::square()),
-        ("Hexagon", Tiling::hex()),
-        ("Triangular", Tiling::triangle()),
-        ("Truncated Square", Tiling::truncated_square()),
-        ("Tetrakis Square", Tiling::tetrakis_square()),
-        ("Snub Square", Tiling::snub_square()),
-        ("Cairo Pentagonal", Tiling::cairo_pentagonal()),
-        ("Trihexagonal", Tiling::trihexagonal()),
-        ("Rhombille", Tiling::rhombille()),
-        ("Truncated Hexagonal", Tiling::truncated_hex()),
-        ("Triakis", Tiling::triakis()),
+        ("Square", tilings::SQUARE),
+        ("Hexagon", tilings::HEX),
+        ("Triangular", tilings::TRIANGLE),
+        ("Truncated Square", tilings::TRUNCATED_SQUARE),
+        ("Tetrakis Square", tilings::TETRAKIS_SQUARE),
+        ("Snub Square", tilings::SNUB_SQUARE),
+        ("Cairo Pentagonal", tilings::CAIRO_PENTAGONAL),
+        ("Trihexagonal", tilings::TRIHEXAGONAL),
+        ("Rhombille", tilings::RHOMBILLE),
+        ("Truncated Hexagonal", tilings::TRUNCATED_HEX),
+        ("Triakis", tilings::TETRAKIS),
     ]
 }
 
@@ -208,6 +211,12 @@ pub fn start() {
     #[cfg(console_error_panic_hook)]
     console_error_panic_hook::set_once();
     wasm_logger::init(wasm_logger::Config::default());
+}
+
+#[wasm_bindgen]
+#[allow(dead_code)]
+pub fn reset(canvas_data: &mut CanvasData) {
+    canvas_data.reset();
 }
 
 #[wasm_bindgen]
@@ -230,6 +239,7 @@ pub fn get_tilings() -> js_sys::Array {
 
 #[wasm_bindgen]
 #[allow(dead_code)]
-pub fn set_tiling(tiling: String, canvas_data: &mut CanvasData) {
+pub fn set_tiling(tiling_name: String, canvas_data: &mut CanvasData) {
+    let tiling = tilings().into_iter().find_map(|(tile_name, tiling)|if tiling_name == tile_name {Some(tiling)} else {None}).unwrap();
     canvas_data.set_tiling(tiling);
 }

@@ -15,6 +15,7 @@ var interval = null;
 var speed = 50;
 speedElement.value = speed;
 var running = false;
+var finished = false;
 
 for (var tiling of wasm.get_tilings()) {
     var option = document.createElement("option");
@@ -33,6 +34,10 @@ run.onclick = function() {
 }
 
 function set_running(bool) {
+    if (bool && finished) {
+        wasm.reset(data);
+    }
+
     tilingElement.disabled = bool;
     stepElement.disabled = bool;
     runElement.disabled = bool;
@@ -53,6 +58,7 @@ function set_running(bool) {
         interval = setInterval(() => {
             if (wasm.step(data, iterations)){
                 set_running(false);
+                finished = true;
             }
         }, timeout)
     } else {

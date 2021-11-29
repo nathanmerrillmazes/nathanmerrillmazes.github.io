@@ -70,6 +70,14 @@ export function start() {
 }
 
 /**
+* @param {CanvasData} canvas_data
+*/
+export function reset(canvas_data) {
+    _assertClass(canvas_data, CanvasData);
+    wasm.reset(canvas_data.ptr);
+}
+
+/**
 * @param {HTMLCanvasElement} canvas
 * @returns {CanvasData}
 */
@@ -141,11 +149,11 @@ function passStringToWasm0(arg, malloc, realloc) {
     return ptr;
 }
 /**
-* @param {string} tiling
+* @param {string} tiling_name
 * @param {CanvasData} canvas_data
 */
-export function set_tiling(tiling, canvas_data) {
-    var ptr0 = passStringToWasm0(tiling, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+export function set_tiling(tiling_name, canvas_data) {
+    var ptr0 = passStringToWasm0(tiling_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     var len0 = WASM_VECTOR_LEN;
     _assertClass(canvas_data, CanvasData);
     wasm.set_tiling(ptr0, len0, canvas_data.ptr);

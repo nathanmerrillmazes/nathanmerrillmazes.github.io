@@ -1,8 +1,9 @@
-import * as wasm from "mazes";
+import init, * as wasm from "./wasm/mazes.js";
 
+await init();
 
 var canvas = document.getElementById("canvas")
-let data = wasm.init(canvas);
+let data = wasm.wasm_init(canvas);
 
 var tilingElement = document.getElementById("select-tiling");
 var runElement = document.getElementById("run");

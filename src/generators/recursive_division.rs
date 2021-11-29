@@ -27,6 +27,7 @@ impl Generator for RecursiveDivision {
         if !self.finished {
 
             for node_idx in 0..self.nodes.len() {
+                
                 let next_neighbor = {
                     let adjacent_cells: Vec<Offset> = 
                     maze.adjacent_cells(self.nodes[node_idx].current)
@@ -46,19 +47,21 @@ impl Generator for RecursiveDivision {
 
                 let mut updates = None;
 
-                for node in &self.nodes {
-                    if node.id != node_idx && node.cells.contains(&node.current) {
-                        let new_id = min(node.id, node_idx);
-                        let old_id = max(node.id, node_idx);
-                        updates = Some((new_id, old_id));
-                        break;
+                if let Some(next) = next_neighbor {
+                    for node in &self.nodes {
+                        if node.id != node_idx && node.cells.contains(&next) {
+                            let new_id = min(node.id, self.nodes[node_idx].id);
+                            let old_id = max(node.id, self.nodes[node_idx].id);
+                            updates = Some((new_id, old_id));
+                            break;
+                        }
                     }
-                }
 
-                if let Some((new_id, old_id)) = updates {
-                    for node in &mut self.nodes {
-                        if node.id == old_id {
-                            node.id = new_id;
+                    if let Some((new_id, old_id)) = updates {
+                        for node in &mut self.nodes {
+                            if node.id == old_id {
+                                node.id = new_id;
+                            }
                         }
                     }
                 }
@@ -97,7 +100,7 @@ impl Generator for RecursiveDivision {
     fn init(maze: &Maze, mut rng: ThreadRng, options: HashMap<&'static str, usize>) -> Self {
         let mut nodes = Vec::new();
         let mut selected = HashSet::new();
-        for _ in 0..options["Threads"] {
+        for i in 0..options["Threads"] {
             let current = loop {
                 let current = *maze.cells.keys().choose(&mut rng).unwrap();
                 if selected.insert(current) {
@@ -111,7 +114,7 @@ impl Generator for RecursiveDivision {
             nodes.push(RecursiveDivisionNode {
                 stack: Vec::new(),
                 cells,
-                id: nodes.len(),
+                id: i,
                 current,
                 finished: false,
             });
@@ -127,7 +130,7 @@ impl Generator for RecursiveDivision {
         vec![
             GeneratorOption {
                 min: 1,
-                default: 2,
+                default: 10,
                 max: maze.cells.len() / 4,
                 name: "Threads",
             },

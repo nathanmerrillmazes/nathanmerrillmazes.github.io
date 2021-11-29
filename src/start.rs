@@ -9,7 +9,6 @@ use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 use crate::{generators::{Generator, GeneratorUpdate, recursive_division::RecursiveDivision}, maze::*};
 
-
 #[wasm_bindgen]
 pub struct CanvasData {
     canvas: CanvasRenderingContext2d,
@@ -181,7 +180,6 @@ impl CanvasData {
     }
 }
 
-
 #[wasm_bindgen]
 #[allow(dead_code)]
 pub fn step(canvas_data: &mut CanvasData, iterations: u32) -> bool {
@@ -214,7 +212,7 @@ pub fn start() {
 
 #[wasm_bindgen]
 #[allow(dead_code)]
-pub fn init(canvas: web_sys::HtmlCanvasElement) -> CanvasData {
+pub fn wasm_init(canvas: web_sys::HtmlCanvasElement) -> CanvasData {
     let data = CanvasData::new(canvas);
     data.render();
     data

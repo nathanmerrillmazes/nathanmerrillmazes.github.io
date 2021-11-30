@@ -100,7 +100,7 @@ impl Generator for RecursiveDivision {
     fn init(maze: &Maze, mut rng: ThreadRng, options: HashMap<&'static str, usize>) -> Self {
         let mut nodes = Vec::new();
         let mut selected = HashSet::new();
-        for i in 0..options["Threads"] {
+        for i in 0..options["Seeds"] {
             let current = loop {
                 let current = *maze.cells.keys().choose(&mut rng).unwrap();
                 if selected.insert(current) {

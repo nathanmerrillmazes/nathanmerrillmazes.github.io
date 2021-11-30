@@ -1,13 +1,13 @@
 #[cfg(console_error_panic_hook)]
 extern crate console_error_panic_hook;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use rand::thread_rng;
-use wasm_bindgen::{JsCast, prelude::*};
+use wasm_bindgen::{JsCast, JsObject, prelude::*};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
-use crate::{generators::{Generator, GeneratorUpdate, recursive_division::RecursiveDivision}, maze::*, tilings};
+use crate::{generators::{Generator, GeneratorOption, GeneratorUpdate, ellers::Ellers, recursive_division::RecursiveDivision}, maze::*, tilings};
 
 #[wasm_bindgen]
 pub struct CanvasData {
@@ -197,6 +197,22 @@ fn tilings() -> Vec<(&'static str, Tiling)> {
     ]
 }
 
+fn generators(canvas_data: &CanvasData) -> Vec<(&'static str, Vec<GeneratorOption>)> {
+    vec![
+        ("Recursive Division", RecursiveDivision::options(&canvas_data.maze)),
+        ("Ellers", Ellers::options(&canvas_data.maze)),
+    ]
+}
+
+fn set_generator(name: &'static str, options: HashMap<&'static str, usize>, canvas_data: &mut CanvasData) {
+    let generator: Box<dyn Generator> = match name {
+        "Recursive Division" => Box::new(RecursiveDivision::init(&canvas_data.maze, thread_rng(), options)),
+        "Ellers" => Box::new(Ellers::init(&canvas_data.maze, thread_rng(), options)),
+    };
+
+    canvas_data.generator = generator;
+}
+
 #[wasm_bindgen(start)]
 #[allow(dead_code)]
 pub fn start() {
@@ -224,6 +240,18 @@ pub fn wasm_init(canvas: web_sys::HtmlCanvasElement, scale: f64, rotation: f64) 
 pub fn get_tilings() -> js_sys::Array {
     let arr = js_sys::Array::new();
     for (name, _) in tilings().into_iter() {
+        arr.push(&JsValue::from_str(name));
+    }
+    arr
+}
+
+#[wasm_bindgen]
+#[allow(dead_code)]
+pub fn get_generators(canvas_data: &CanvasData) -> js_sys::Array {
+    let arr = js_sys::Array::new();
+    for (name, OPTIONS) in generators(canvas_data).into_iter() {
+        
+        obj.set("name", &JsValue::from_str(name)).set("options", &JsValue::from_serde(&OPTIONS).unwrap());
         arr.push(&JsValue::from_str(name));
     }
     arr

@@ -4,6 +4,7 @@ use crate::maze::{Maze, Offset};
 use rand::prelude::ThreadRng;
 
 pub mod recursive_division;
+pub mod ellers;
 
 pub trait Generator {
     fn init(maze: &Maze, rand: ThreadRng, options: HashMap<&'static str, usize>) -> Self

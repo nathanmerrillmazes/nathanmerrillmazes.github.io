@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, HashSet}, ops::{Add, Div, Mul, Sub}};
+use std::{cmp::Ordering, collections::{HashMap, HashSet}, ops::{Add, Div, Mul, Sub}};
 
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -102,6 +102,18 @@ pub struct Offset {
     pub x: isize,
     pub y: isize,
     pub coordinates: Coordinates
+}
+
+impl PartialOrd for Offset {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+ 
+impl Ord for Offset {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.y.cmp(&other.y).then(self.x.cmp(&other.x))
+    }
 }
 
 impl Add for Offset {
@@ -276,6 +288,7 @@ impl Rectangle {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Adjacency {
+    pub cell: Offset,
     pub index: usize,
     pub offset: Offset
 }
@@ -367,7 +380,7 @@ impl Maze {
             .filter_map(move |(index, side)|  {
                 let offset = self.calculate_offset(cell, *side);
                 if self.cells.contains_key(&offset) {
-                    Some(Adjacency{index, offset})
+                    Some(Adjacency{cell: cell.offset, index, offset})
                 } else {
                     None
                 }

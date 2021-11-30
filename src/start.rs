@@ -153,6 +153,8 @@ impl CanvasData {
         let option_values = options.iter().map(|option| (option.name, option.default)).collect();
         self.generator = Box::new(RecursiveDivision::init(&self.maze, thread_rng(), option_values));
         self.finished = false;
+        self.primary.clear();
+        self.secondary.clear();
         self.render();
     }
 

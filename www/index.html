@@ -8,31 +8,40 @@
   </head>
   <body>
     <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
-    <div style="text-align: center;">
-      <h1>Maze Generator</h1>
-      <canvas id="canvas" width="750" height="750" style="border: solid;"></canvas>
+    <div class="container">
       <div class="row" style="justify-content: center;">
-        <div class="card">
-          <h3>Playback</h3>
-          <div id="controls">
-            <button id="step">▶</button>
-            <button id="run">▶▶</button>
-            <button id="stop">■</button>
-            <input type="range" min="0" max="100" value="0" id="speed">
-          </div>
+        <div class="col">
+          <h1>Maze Generator</h1>
         </div>
       </div>
-      <div class="row" style="justify-content: center;">
-        <div class="card">
-          <h3>Tiling</h3>
-          <select id="select-tiling">
-          </select>
+      <div class="row">
+        <div class="col-sm-6" style="text-align: right;" >
+          <canvas id="canvas" width="750" height="750" style="border: solid;"></canvas>
+          <div class="row" style="justify-content: center; text-align: center;">
+            <div class="card">
+              <div id="controls">
+                <button id="step">▷</button>
+                <button id="run">▶</button>
+                <button id="stop">■</button>
+                <input type="range" min="0" max="100" value="0" id="speed">
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="card" style="justify-content: center;">
-          <h3>Rotation</h3>
-          <input type="range" min="0" max="90" step="5" id="rotation">
-          <h3>Scale</h3>
-          <input type="range" min="6" max="100" step="" id="scale">
+        <div class="col-sm-6">
+          <div class="row" style="justify-content: left;">
+            <div class="card">
+              <h3>Tiling</h3>
+              <select id="select-tiling">
+              </select>
+            </div>
+            <div class="card">
+              <h3>Rotation</h3>
+              <input type="range" min="0" max="90" step="5" id="rotation">
+              <h3>Scale</h3>
+              <input type="range" min="6" max="100" step="" id="scale">
+            </div>
+          </div>
         </div>
       </div>
     </div>

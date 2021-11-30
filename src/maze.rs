@@ -282,8 +282,8 @@ pub struct Adjacency {
 
 pub fn rotate(point: Coordinates, origin: Coordinates, angle: f64) -> Coordinates {
     let distance = point - origin;
-    let sin = angle.sin();
-    let cos = angle.cos();
+    let sin = angle.to_radians().sin();
+    let cos = angle.to_radians().cos();
     Coordinates {
         x: origin.x + cos * distance.x - sin * distance.y,
         y: origin.y + sin * distance.x + cos * distance.y,
